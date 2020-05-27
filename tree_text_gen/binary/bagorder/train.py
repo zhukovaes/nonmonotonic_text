@@ -124,7 +124,7 @@ def train_epoch(epoch):
         oracle = Oracle(xs, model.n_classes, tok2i, i2tok, **oracle_flags)
         gt.stamp("create_oracle")
         max_steps = 2*xs.ne(tok2i['<p>']).sum(1).max()+1
-        scores, samples, p_oracle = model.forward(xs=xs, oracle=oracle, max_steps=max_steps, return_p_oracle=True)
+        rewards, scores, samples, p_oracle = model.forward(xs=xs, oracle=oracle, max_steps=max_steps, return_p_oracle=True)
         gt.stamp("forward")
         loss = loss_fn(scores, samples, p_oracle, tok2i['<end>'], **loss_flags)
         gt.stamp("loss")
