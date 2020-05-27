@@ -107,14 +107,15 @@ class LSTMDecoder(nn.Module):
                     samples.append(xt)
 
         samples = torch.cat(samples, 1)
-        if self.training:
-            rewards = torch.cat(rewards, 1)
         if not self.aux_end:
             scores = torch.cat(scores, 1)
         if return_p_oracle:
             p_oracle = torch.stack(p_oracle, 1)
             return rewards, scores, samples, p_oracle
-        return rewards, scores, samples
+        if self.training:
+            rewards = torch.cat(rewards, 1)
+            return rewards, scores, samples
+        return scores, samples
 
     def encode(self, xs):
         if self.model_type == 'unconditional':
