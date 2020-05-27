@@ -121,7 +121,7 @@ def train_epoch(epoch):
         xs = xs.to(args.device)
         gt.stamp("load_data")
 
-        oracle = Oracle(xs, model.n_classes, tok2i, i2tok, **oracle_flags)
+        oracle = Oracle(xs, model.n_classes, tok2i, i2tok, model.encoder.enc_emb.weight.data, **oracle_flags)
         gt.stamp("create_oracle")
         max_steps = 2*xs.ne(tok2i['<p>']).sum(1).max()+1
         rewards, scores, samples, p_oracle = model.forward(xs=xs, oracle=oracle, max_steps=max_steps, return_p_oracle=True)
