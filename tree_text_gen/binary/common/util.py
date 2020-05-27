@@ -9,19 +9,23 @@ import inspect
 from torch import optim
 import torch
 from tqdm import tqdm
-import torch.nn.functional as F
-
 
 
 # --- Pytorch
-def masked_softmax(vec, mask, dim=1, epsilon=1e-40, alpha=0., old=True):
-    if old:
-        exps = torch.exp(vec)
-        masked_exps = exps * mask.float() + alpha
-        masked_sums = torch.clamp(masked_exps.sum(dim, keepdim=True), min=epsilon)
-        ps = masked_exps / masked_sums
-    else:
-        ps = F.softmax(vec, dim) * mask + epsilon
+def pairdist(a, b):
+    scalar = a[:,None, :]*b
+    scalar = torch.sum(scalar, -1)
+    a_val = torch.sqrt(torch.sum(a * a, -1))
+    a_val = a_val[:, None]
+    b_val = torch.sqrt(torch.sum(b * b, -1))
+    b_val = b_val[None, :]
+    return 1. - scalar / a_val / b_val
+
+def masked_softmax(vec, mask, dim=1, epsilon=1e-40, alpha=0.):
+    exps = torch.exp(vec)
+    masked_exps = exps * mask.float() + alpha
+    masked_sums = torch.clamp(masked_exps.sum(dim, keepdim=True), min=epsilon)
+    ps = masked_exps / masked_sums
     return ps
 
 
@@ -170,4 +174,3 @@ def date_filename(base_dir='./'):
     dt = datetime.datetime.now()
     return os.path.join(base_dir, '{}_{:02d}-{:02d}-{:02d}'.format(
         dt.date(), dt.hour, dt.minute, dt.second))
-
