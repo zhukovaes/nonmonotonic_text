@@ -1,6 +1,8 @@
 """Contains `Tree` and `Node` classes used by the oracle, and functions to transform
 model samples (level-order token sequences) to an in-order sequence or a tree. """
 
+import numpy as np
+
 
 class Tree(object):
     def __init__(self, root_node, end_idx):
@@ -52,7 +54,7 @@ class Tree(object):
 
 
 class Node(object):
-    def __init__(self, valid_actions, parent, end_idx, invalid_behavior='split'):
+    def __init__(self, valid_actions, parent, end_idx, invalid_behavior='split', determine = False):
         self.valid_actions = valid_actions
         self.left = None
         self.right = None
@@ -60,6 +62,7 @@ class Node(object):
         self.parent = parent
         self.END = end_idx
         self.invalid_behavior = invalid_behavior
+        self.determine = determine
 
     def generate(self, action):
         if self.value is not None:
@@ -74,21 +77,26 @@ class Node(object):
                 # Make a left-child with valid actions (a_1,...,a_{i-1}), where a_i=action,
                 # or (END) when there are no valid actions to the left of a_i.
                 # NOTE(wellecks): this chooses the left-most instance if there are multiple instances
-                idx = self.valid_actions.index(action)
+                idxes = np.where(self.valid_actions == action)[0]
+                if self.determine:
+                  idx = idxes[0]
+                else:
+                  idx = np.random.choice(idxes)
                 left_actions = self.valid_actions[:idx] if idx > 0 else [self.END]
-                self.left = Node(left_actions, self, self.END, self.invalid_behavior)
+                self.left = Node(left_actions, self, self.END, self.invalid_behavior, self.determine)
 
                 # Make a left-child with valid actions (a_{i+1},...,a_N), where a_i=action,
                 # or (END) when there are no valid actions to the right of a_i.
                 right_actions = self.valid_actions[idx+1:] if len(self.valid_actions[idx+1:]) > 0 else [self.END]
-                self.right = Node(right_actions, self, self.END, self.invalid_behavior)
+                self.right = Node(right_actions, self, self.END, self.invalid_behavior, self.determine)
         else:
             self._handle_invalid(action, self.invalid_behavior)
 
     def _handle_invalid(self, action, invalid_behavior):
-        """Determine this Node's value and its children's valid actions, when `action` is not valid.
-        Given valid actions {a, b, c} and invalid `action` d:
-            - 'split': Set `d` as this Node's value, create left child {a, b} and right child {c}
+        """Set this Node's value and its children's valid actions, when `action` is not valid.
+        Given valid actions and invalid `action` d:
+            - 'split': Set `d` as this Node's value, split valid actions on left and right childs by index
+            if self.determine index = 1/2 len(valid actions) else index = random(len(valid actions))
             - NOTE(wellecks): can support other invalid behavior handling here
         """
         # Set the invalid action as this Node's value.
@@ -102,7 +110,10 @@ class Node(object):
                 right_actions = (self.END,)
             # Otherwise split the valid actions in half, and give one half to each child.
             else:
-                idx = len(self.valid_actions)//2
+                if self.determine:
+                    idx = len(self.valid_actions)//2
+                else:
+                    idx = np.random.choice(len(self.valid_actions))
                 left_actions = self.valid_actions[:idx+1] if len(self.valid_actions[:idx+1]) > 0 else [self.END]
                 right_actions = self.valid_actions[idx+1:] if len(self.valid_actions[idx+1:]) > 0 else [self.END]
             self.left = Node(left_actions, self, self.END, self.invalid_behavior)
@@ -241,13 +252,13 @@ def _build_tree_string(root, show_index=False):
 # --- testing / demo
 def generate_random_valid(tokens):
     print("Random Valid Generation:")
-    import random
     root = Node(tokens, None, 'ø')
     tree = Tree(root, 'ø')
 
     go = True
     while go:
-        action = random.sample(tree.current.valid_actions, 1)[0]
+
+        action = np.random.choice(tree.current.valid_actions)
         tree.generate(action)
         go = tree.next()
     tree.print_dfs()
@@ -256,15 +267,14 @@ def generate_random_valid(tokens):
 
 def generate_random_invalid(tokens):
     print("Random Generation with 20% Invalid Actions:")
-    import random
     import string
-    import numpy as np
+    import random
     root = Node(tokens, None, 'ø')
     tree = Tree(root, 'ø')
 
     go = True
     while go:
-        action = random.sample(tree.current.valid_actions, 1)[0]
+        action = np.random.choice(tree.current.valid_actions)
         # generate an invalid action w.p. beta
         if np.random.binomial(1, p=0.2):
             action = ''.join(random.choices(string.ascii_uppercase, k=5))
@@ -276,7 +286,7 @@ def generate_random_invalid(tokens):
 
 def generate_left_to_right(tokens):
     print("Left-to-Right Generation")
-    root = Node(tokens, None, 'ø')
+    root = Node(tokens, None, 'ø', determine=True)
     tree = Tree(root, 'ø')
     go = True
     while go:
@@ -288,7 +298,7 @@ def generate_left_to_right(tokens):
 
 
 def test_demo():
-    text = ['a', 'b', 'c', 'd', 'e']
+    text = np.array(['a', 'b', 'c', 'a', 'd', 'e', 'a'])
     t2 = generate_left_to_right(text)
     print(t2.to_text())
     print()
@@ -300,15 +310,15 @@ def test_demo():
 
 
 def test_binarynode():
-    level_order_tokens = ['a', 'b', 'c', 'd', '<end>', '<end>', 'e']
+    level_order_tokens = np.array(['a', 'b', 'c', 'd', '<end>', '<end>', 'e'])
     root = build_tree(level_order_tokens)
     print(print_tree(root))
 
-    level_order_tokens = ['a', 'b', 'c', 'd', 'e', 'f', 'g']
+    level_order_tokens = np.array(['a', 'b', 'c', 'd', 'e', 'f', 'g'])
     root = build_tree(level_order_tokens)
     print(print_tree(root))
 
-    level_order_tokens = ['a', '<end>', 'b', '<end>', 'c', '<end>', 'd', '<end>', '<end>', '<p>', '<p>']
+    level_order_tokens = np.array(['a', '<end>', 'b', '<end>', 'c', '<end>', 'd', '<end>', '<end>', '<p>', '<p>'])
     root = build_tree(level_order_tokens)
     print(print_tree(root))
 
