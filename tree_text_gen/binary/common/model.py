@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from tree_text_gen.binary.common.attention import AttentionLayer
 
 class LSTMDecoder(nn.Module):
-    def __init__(self, config, tok2i, sampler, encoder):
+    def __init__(self, config, tok2i, sampler, encoder, correct_input=True):
         super(LSTMDecoder, self).__init__()
         self.fc_dim = config['fc_dim']
         self.dec_lstm_dim = config['dec_lstm_dim']
@@ -16,6 +16,7 @@ class LSTMDecoder(nn.Module):
         self.model_type = config['model_type']
         self.aux_end = config.get('aux_end', False)
         self.encoder = encoder
+        self.correct_input =correct_input
 
         # -- Decoder
         self.dec_lstm_input_dim = config.get('dec_lstm_input_dim', self.word_emb_dim)
@@ -69,6 +70,7 @@ class LSTMDecoder(nn.Module):
         hidden = self.init_hidden(encoder_output if encoder_output is not None else B)
         scores = []
         samples = []
+        rewards = []
         p_oracle = []
         self.sampler.reset(bsz=B)
         if self.training:
@@ -81,11 +83,14 @@ class LSTMDecoder(nn.Module):
                 xt = self.sampler(score_t, oracle, training=True)
                 hidden = self.process_hidden_post(hidden, xt, encoder_output)
                 p_oracle.append(oracle.distribution())
-                oracle.update(xt)
+                reward, actions = oracle.update(xt)
+                rewards.append(torch.tensor(reward))
                 samples.append(xt)
                 scores.append(score_t)
                 t += 1
                 done = oracle.done()
+                if self.correct_input:
+                    xt = torch.tensor(actions, device=self.device)
                 if max_steps and t == max_steps:
                     done = True
 
@@ -102,12 +107,14 @@ class LSTMDecoder(nn.Module):
                     samples.append(xt)
 
         samples = torch.cat(samples, 1)
+        if self.training:
+            rewards = torch.cat(rewards, 1)
         if not self.aux_end:
             scores = torch.cat(scores, 1)
         if return_p_oracle:
             p_oracle = torch.stack(p_oracle, 1)
-            return scores, samples, p_oracle
-        return scores, samples
+            return rewards, scores, samples, p_oracle
+        return rewards, scores, samples
 
     def encode(self, xs):
         if self.model_type == 'unconditional':
@@ -175,4 +182,3 @@ class LSTMDecoder(nn.Module):
         if self.model_type == "bagorder":
             hidden = (hidden[0] + encoder_output, hidden[1])
         return hidden
-
