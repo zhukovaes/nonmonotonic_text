@@ -31,6 +31,7 @@ class Metrics(object):
             tokens = inds2toks(self._i2tok, samples[i].cpu().tolist())
             root = build_tree(tokens)
             tokens, nodes = tree_to_text(root)
+            #print(tokens, batch[i])
             gt_inds = [x for x in batch[0][i].cpu().tolist() if x != self._tok2i['</s>'] and x != self._tok2i['<p>']]
             gt_tokens = inds2toks(self._i2tok, gt_inds)
 

@@ -15,7 +15,7 @@ class Oracle(object):
         for i in range(self._B):
             # Make a tree with only the token indices (not <s>, </s>, <p>)
             filt = (token_idxs[i] != tok2i['</s>']) & (token_idxs[i] != tok2i['<p>']) & (token_idxs[i] != tok2i['<s>'])
-            idxs = token_idxs[i][filt].tolist()
+            idxs = token_idxs[i][filt].cpu().numpy()
             node = Node(idxs, parent=None, end_idx=tok2i['<end>'], invalid_behavior=invalid_behavior)
             self.trees.append(Tree(root_node=node, end_idx=tok2i['<end>']))
 
@@ -68,25 +68,29 @@ class Oracle(object):
         actions = []
         with th.no_grad():
             for i in range(self._B):
+                action = samples[i]
                 if self._stopped[i] or len(self.trees[i].current.valid_actions) == 1:
                     # if tree completed and predicted <end> reward is 0 
                     if samples[i].item() == self.end_idx:
-                        rewards.append([1.0])
+                        reward = 1.0
                     else:
                         # if tree completed but predicted not <end> reward is -2
-                        rewards.append([-2])
-                    actions.append([samples[i]])
+                        reward = -2
                 else:
                     valid_actions = self.trees[i].current.valid_actions
                     if samples[i].item() == self.end_idx:
-                          rewards.append([(-2) * len(valid_actions)])
-                          actions.append([samples[i]])
+                          reward = (-2) * len(valid_actions)
                     else:
                         reward, action = self.choose_action(samples[i], valid_actions)
                         if reward == 0:
                             reward = 1.0
-                        actions.append([action])
-                        rewards.append([reward])
+                        reward = reward
+                actions.append([action])
+                rewards.append([reward])
+                if not self._stopped[i]:
+                    self.trees[i].generate(samples[i].item())
+                    self.trees[i].next()
+                    self._stopped[i] = int(self.trees[i].done())
         #print(len(rewards))
         return rewards, actions
 

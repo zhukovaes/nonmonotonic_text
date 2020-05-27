@@ -49,7 +49,7 @@ def model_args(parser):
     # samplers & rollin
     parser.add_argument("--rollin", choices=["mixed"], default='mixed', help='learned rollin via --rollin-beta 0.0')
     parser.add_argument("--rollin-mix-type", choices=["trajectory", "state"], default="state", help="mix rollin at the trajectory or state level")
-    parser.add_argument("--training-sampler", choices=["greedy", "stochastic", "policy_correct_greedy", "policy_correct_stochastic"], default="policy_correct_greedy")
+    parser.add_argument("--training-sampler", choices=["greedy", "stochastic", "policy_correct_greedy", "policy_correct_stochastic"], default="stochastic")
     parser.add_argument("--eval-sampler", choices=["greedy", "stochastic"], default="greedy")
 
     # gpu

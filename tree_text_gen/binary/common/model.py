@@ -83,7 +83,9 @@ class LSTMDecoder(nn.Module):
                 xt = self.sampler(score_t, oracle, training=True)
                 p_oracle.append(oracle.distribution())
                 reward, actions = oracle.update(xt)
-                rewards.append(torch.tensor(reward))
+
+                #print(xt, actions)
+                rewards.append(torch.tensor(reward, dtype=torch.float32))
                 samples.append(xt)
                 scores.append(score_t)
                 t += 1

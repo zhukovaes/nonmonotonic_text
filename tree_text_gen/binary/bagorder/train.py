@@ -15,7 +15,7 @@ import tree_text_gen.binary.common.samplers as samplers
 from tree_text_gen.binary.common.util import setup, init_embeddings, get_optimizer, log_tensorboard
 from tree_text_gen.binary.common.data import load_personachat, build_tok2i, SentenceDataset, inds2toks
 from tree_text_gen.binary.common.oracle import Oracle, LeftToRightOracle
-from tree_text_gen.binary.common.losses import sequential_set_no_stop_loss, sequential_set_loss
+from tree_text_gen.binary.common.losses import sequential_set_no_stop_loss, sequential_set_loss, reward_loss
 from tree_text_gen.binary.common.tree import build_tree, tree_to_text, print_tree
 from tree_text_gen.binary.common.model import LSTMDecoder
 from tree_text_gen.binary.common.encoder import BOWEncoder
@@ -84,6 +84,8 @@ if args.aux_end:
     loss_fn = sequential_set_loss
 else:
     loss_fn = sequential_set_no_stop_loss
+
+#loss_fn=reward_loss
 loss_flags['self_teach_beta'] = args.self_teach_beta
 
 
@@ -125,8 +127,11 @@ def train_epoch(epoch):
         gt.stamp("create_oracle")
         max_steps = 2*xs.ne(tok2i['<p>']).sum(1).max()+1
         rewards, scores, samples, p_oracle = model.forward(xs=xs, oracle=oracle, max_steps=max_steps, return_p_oracle=True)
+
+        rewards = torch.cat(rewards, 1)
+        rewards = torch.tensor(rewards, device=model.device)
         gt.stamp("forward")
-        loss = loss_fn(scores, samples, p_oracle, tok2i['<end>'], **loss_flags)
+        loss = loss_fn(rewards, scores, samples, p_oracle, tok2i['<end>'], **loss_flags)
         gt.stamp("loss")
 
         optimizer.zero_grad()

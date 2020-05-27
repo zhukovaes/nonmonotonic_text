@@ -1,4 +1,5 @@
 import torch as th
+import numpy as np
 import torch.nn.functional as F
 
 import tree_text_gen.binary.common.util as util
@@ -13,7 +14,7 @@ def _correct_policy_distribution(scores_t, p_oracle):
     return p_correct_policy
 
 
-def sequential_set_no_stop_loss(scores, samples, oracle_ps, end_idx, self_teach_beta=1.0):
+def sequential_set_no_stop_loss(rewards, scores, samples, oracle_ps, end_idx, self_teach_beta=1.0):
     T = scores.size(1)
     losses = []
     for t in range(T):
@@ -45,7 +46,7 @@ def sequential_set_no_stop_loss(scores, samples, oracle_ps, end_idx, self_teach_
     return loss
 
 
-def sequential_set_loss(scores, samples, oracle_ps, end_idx, self_teach_beta=1.0):
+def sequential_set_loss(rewards, scores, samples, oracle_ps, end_idx, self_teach_beta=1.0):
     # -- Version with auxiliary <end> loss
     if not isinstance(scores[0], tuple) and scores[0].size(1) > 1:
         scores, stop_probs = scores
@@ -103,3 +104,8 @@ def sequential_set_loss(scores, samples, oracle_ps, end_idx, self_teach_beta=1.0
     loss = loss + stop_loss
     return loss
 
+def reward_loss(rewards, scores, samples, oracle_ps, end_idx, self_teach_beta=1.0):
+    X,Y = np.meshgrid(np.arange(samples.shape[1]),np.arange(samples.shape[0]))
+    scores = F.softmax(scores, dim=1)
+    loss = th.sum(-rewards.flatten() * th.log(scores[Y.flatten(), X.flatten(), samples.flatten()]))
+    return loss
