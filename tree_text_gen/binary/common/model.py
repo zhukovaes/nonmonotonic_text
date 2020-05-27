@@ -81,7 +81,6 @@ class LSTMDecoder(nn.Module):
                 hidden = self.process_hidden_pre(hidden, xt, encoder_output)
                 score_t, _, hidden = self.decode(xt, hidden, encoder_output)
                 xt = self.sampler(score_t, oracle, training=True)
-                hidden = self.process_hidden_post(hidden, xt, encoder_output)
                 p_oracle.append(oracle.distribution())
                 reward, actions = oracle.update(xt)
                 rewards.append(torch.tensor(reward))
@@ -91,6 +90,7 @@ class LSTMDecoder(nn.Module):
                 done = oracle.done()
                 if self.correct_input:
                     xt = torch.tensor(actions, device=self.device)
+                hidden = self.process_hidden_post(hidden, xt, encoder_output)
                 if max_steps and t == max_steps:
                     done = True
 
