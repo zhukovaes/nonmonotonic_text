@@ -82,8 +82,8 @@ class Oracle(object):
                           reward = (-2) * len(valid_actions)
                     else:
                         reward, action = self.choose_action(samples[i], valid_actions)
-                        if reward == 0:
-                            reward = 1.0
+                        if reward > -1e-8:
+                            reward = 1.0 / len(valid_actions)
                         reward = reward
                 actions.append([action])
                 rewards.append([reward])
