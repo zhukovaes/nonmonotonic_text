@@ -211,9 +211,9 @@ def _build_tree_string(root, show_index=False, i2tok=None):
 
     # Get the left and right sub-boxes, their widths, and root repr positions
     l_box, l_box_width, l_root_start, l_root_end = \
-        _build_tree_string(root.left, show_index)
+        _build_tree_string(root.left, show_index, i2tok)
     r_box, r_box_width, r_root_start, r_root_end = \
-        _build_tree_string(root.right, show_index)
+        _build_tree_string(root.right, show_index, i2tok)
 
     # Draw the branch connecting the current root node to the left sub-box
     # Pad the line with whitespaces where necessary
