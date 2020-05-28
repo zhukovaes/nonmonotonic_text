@@ -89,3 +89,20 @@ class LeftToRightOracle(Oracle):
                     left_action = self.trees[i].current.valid_actions[0]
                     self._valid_actions[i, left_action] = 1
         return self._valid_actions.clone().to(self.device)
+
+class BalancedOracle(Oracle):
+    """Only places probability on the center valid action."""
+    def __init__(self, token_idxs, sample_dim, tok2i, i2tok):
+      super().__init__(token_idxs, sample_dim, tok2i, i2tok, greedy=False, determine=True)
+
+    def valid_actions_vector(self):
+        with th.no_grad():
+            self._valid_actions.zero_()
+            for i in range(self._B):
+                if self._stopped[i]:
+                    self._valid_actions[i][self.tok2i['<p>']] = 1
+                else:
+                    actions = self.trees[i].current.valid_actions
+                    action = actions[len(actions)//2]
+                    self._valid_actions[i, action] = 1
+        return self._valid_actions.clone().to(self.device)
