@@ -184,12 +184,12 @@ def tree_to_text(root):
     return text, nodes
 
 
-def print_tree(root, show_index=False):
-    lines = _build_tree_string(root, show_index)[0]
+def print_tree(root, show_index=False, i2tok=None):
+    lines = _build_tree_string(root, show_index, i2tok)[0]
     return '\n' + '\n'.join((line.rstrip() for line in lines))
 
 
-def _build_tree_string(root, show_index=False):
+def _build_tree_string(root, show_index=False, i2tok=None):
     # SOURCE: https://github.com/joowani/binarytree
     if root is None:
         return [], 0, 0, 0
@@ -197,9 +197,15 @@ def _build_tree_string(root, show_index=False):
     line1 = []
     line2 = []
     if show_index:
-        node_repr = '{}-{}'.format(root.index, root.value)
+        if i2tok:
+            node_repr = '{}-{}'.format(root.index, i2tok[root.value])
+        else:
+            node_repr = '{}-{}'.format(root.index, root.value)
     else:
-        node_repr = str(root.value)
+        if i2tok:
+            node_repr = str(i2tok[root.value])
+        else:
+            node_repr = str(root.value)
 
     new_root_width = gap_size = len(node_repr)
 
