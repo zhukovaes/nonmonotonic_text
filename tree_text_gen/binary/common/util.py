@@ -9,14 +9,19 @@ import inspect
 from torch import optim
 import torch
 from tqdm import tqdm
+import torch.nn.functional as F
+
 
 
 # --- Pytorch
-def masked_softmax(vec, mask, dim=1, epsilon=1e-40, alpha=0.):
-    exps = torch.exp(vec)
-    masked_exps = exps * mask.float() + alpha
-    masked_sums = torch.clamp(masked_exps.sum(dim, keepdim=True), min=epsilon)
-    ps = masked_exps / masked_sums
+def masked_softmax(vec, mask, dim=1, epsilon=1e-40, alpha=0., old=True):
+    if old:
+        exps = torch.exp(vec)
+        masked_exps = exps * mask.float() + alpha
+        masked_sums = torch.clamp(masked_exps.sum(dim, keepdim=True), min=epsilon)
+        ps = masked_exps / masked_sums
+    else:
+        ps = F.softmax(vec, dim) * mask + epsilon
     return ps
 
 

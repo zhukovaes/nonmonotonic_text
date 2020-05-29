@@ -82,13 +82,14 @@ class TopkSampler(object):
 class PolicyCorrectSampler(object):
     """A training sampler that samples from a distribution proportional to the policy's
        distribution restricted to correct actions."""
-    def __init__(self, sample_dim, device, base_sampler):
+    def __init__(self, sample_dim, device, base_sampler, old=False):
         self.base_sampler = base_sampler
         self.device = device
         self.sample_dim = sample_dim
         self.vmax = int(np.sqrt(sample_dim-1))
         self.aux_end = base_sampler.aux_end
         self.end_idx = base_sampler.end_idx
+        self.old=old
 
     def __call__(self, scores, oracle, **kwargs):
         with torch.no_grad():
@@ -98,13 +99,13 @@ class PolicyCorrectSampler(object):
                 correct_actions_mask = p_oracle.gt(0).unsqueeze(1).float()
                 stop_probs = correct_actions_mask[:, :, self.end_idx]  # prevent invalid <end>
                 token_scores = torch.clamp(token_scores, -40, 40)
-                ps = util.masked_softmax(token_scores, correct_actions_mask, dim=2)
+                ps = util.masked_softmax(token_scores, correct_actions_mask, dim=2, old=self.old)
                 samples = self.base_sampler((ps, stop_probs))
             else:
                 p_oracle = oracle.distribution()
                 correct_actions_mask = p_oracle.gt(0).unsqueeze(1).float()
                 scores = torch.clamp(scores, -40, 40)
-                ps = util.masked_softmax(scores, correct_actions_mask, dim=2)
+                ps = util.masked_softmax(scores, correct_actions_mask, dim=2, old=self.old)
                 samples = self.base_sampler(ps)
         return samples
 
